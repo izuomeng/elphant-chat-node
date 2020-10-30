@@ -1,21 +1,16 @@
 import WebSocket from 'ws';
+import Koa from 'koa';
+import Router from 'koa-router';
+import bodyParser from 'koa-bodyparser';
+import { getUserById, insertUser, updateUser } from './service/user';
+import { UniResponse } from './model/uni-response';
 
 const server = new WebSocket.Server({ port: 3001 });
 const connectionPool: Record<string, WebSocket> = {};
 const chatMessagePool = [];
 
-function getUniqueID() {
-  function s4() {
-    return Math.floor((1 + Math.random()) * 0x10000)
-      .toString(16)
-      .substring(1);
-  }
-  return s4() + s4() + '-' + s4();
-}
-
 server.on('connection', function connection(ws, req) {
   const userId = new URLSearchParams(req.url?.slice(2)).get('uid');
-
   if (!userId) {
     console.warn('Connection must have uid !');
     return;
@@ -63,21 +58,50 @@ server.on('connection', function connection(ws, req) {
   });
 });
 
-import Koa from 'koa';
 const app = new Koa();
+const router = new Router();
 
-import Router from 'koa-router';
-
-// 装载所有子路由
-let router = new Router();
-
-router.get('/message/send', async (ctx) => {
-  ctx.body = 'hhhhh';
+router.get('/user/:id', async (ctx) => {
+  const user = await getUserById(ctx.params.id);
+  ctx.body = user;
 });
 
-// 加载路由中间件
-app.use(router.routes()).use(router.allowedMethods());
+router.post('/user', async (ctx) => {
+  const reqBody = (ctx.request as any).body;
+  await insertUser({
+    id: reqBody.id,
+    name: reqBody.name,
+    avatar: reqBody.avatar,
+    phone: reqBody.phone
+  });
+});
+
+router.put('/user', async (ctx) => {
+  const reqBody = (ctx.request as any).body;
+  await updateUser(reqBody);
+});
+
+app.use(bodyParser());
+
+app.use(async (ctx, next) => {
+  try {
+    await next();
+    ctx.body = new UniResponse({ success: true, content: ctx.body });
+  } catch (error) {
+    ctx.status = 200;
+    ctx.body = new UniResponse({ success: false, content: null, message: error.message });
+    ctx.app.emit('error', error);
+  }
+});
+
+app.use(router.routes());
+app.use(router.allowedMethods());
+
+// 全局错误事件监听
+app.on('error', (error) => {
+  console.error(error);
+});
 
 app.listen(3000, () => {
-  console.log('[demo] route-use-middleware is starting at port 3000');
+  console.log('http server is starting at port 3000');
 });
