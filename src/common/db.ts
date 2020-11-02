@@ -42,11 +42,6 @@ class Db {
       )
     ]);
     return this.db;
-    // await this.db.run(
-    //   'insert into user values ("user4", "克拉默", "https://img.alicdn.com/tfs/TB1Iawfl6MZ7e4jSZFOXXX7epXa-300-300.jpg", "13121210168")'
-    // );
-    // const rows = await this.db.all('select * from user');
-    // console.log(rows);
   }
 }
 

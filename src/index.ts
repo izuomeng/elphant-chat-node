@@ -1,13 +1,14 @@
+import path from 'path';
 import WebSocket from 'ws';
 import Koa from 'koa';
 import Router from 'koa-router';
 import bodyParser from 'koa-bodyparser';
 import { getUserById, insertUser, updateUser } from './service/user';
 import { UniResponse } from './model/uni-response';
+import { checkAndSendCachedMessage, insertMessage } from './service/message';
 
 const server = new WebSocket.Server({ port: 3001 });
 const connectionPool: Record<string, WebSocket> = {};
-const chatMessagePool = [];
 
 server.on('connection', function connection(ws, req) {
   const userId = new URLSearchParams(req.url?.slice(2)).get('uid');
@@ -19,8 +20,9 @@ server.on('connection', function connection(ws, req) {
   console.log('%s is connected', userId);
   connectionPool[userId] = ws;
 
+  checkAndSendCachedMessage({ ws, uid: userId });
+
   ws.on('message', (message) => {
-    console.log('received: %s from %s', message, userId);
     try {
       const messageStr = message.toString();
       const realMessage = JSON.parse(messageStr);
@@ -30,7 +32,7 @@ server.on('connection', function connection(ws, req) {
         const targetUserWs = connectionPool[receiverId];
         const originUserWs = connectionPool[userId];
 
-        [originUserWs, targetUserWs].forEach((ws, index) => {
+        [originUserWs, targetUserWs].forEach(async (ws, index) => {
           // 如果用户在线
           if (ws && ws.readyState === WebSocket.OPEN) {
             const m = {
@@ -39,21 +41,20 @@ server.on('connection', function connection(ws, req) {
             };
             ws.send(JSON.stringify(m));
             console.log('send message to: ', [userId, receiverId][index]);
+          } else {
+            console.log('save message to user:', receiverId);
+            // 不在线则把消息先存起来
+            await insertMessage(chatMessage);
           }
         });
       }
     } catch (error) {
       console.error(error);
     }
-    // 广播消息给所有客户端
-    // server.clients.forEach(function each(client) {
-    //   if (client.readyState === WebSocket.OPEN) {
-    //     client.send(clientName + " -> " + message);
-    //   }
-    // });
   });
 
   ws.on('close', () => {
+    console.log('close connection: ', userId);
     delete connectionPool[userId];
   });
 });
