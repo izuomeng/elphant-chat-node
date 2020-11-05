@@ -1,11 +1,10 @@
-import path from 'path';
 import WebSocket from 'ws';
 import Koa from 'koa';
-import Router from 'koa-router';
 import bodyParser from 'koa-bodyparser';
-import { getUserById, insertUser, updateUser } from './service/user';
 import { UniResponse } from './model/uni-response';
 import { checkAndSendCachedMessage, insertMessage } from './service/message';
+import userRoute from './routes/user';
+import friendRoute from './routes/friend';
 
 const server = new WebSocket.Server({ port: 3001 });
 const connectionPool: Record<string, WebSocket> = {};
@@ -60,27 +59,6 @@ server.on('connection', function connection(ws, req) {
 });
 
 const app = new Koa();
-const router = new Router();
-
-router.get('/user/:id', async (ctx) => {
-  const user = await getUserById(ctx.params.id);
-  ctx.body = user;
-});
-
-router.post('/user', async (ctx) => {
-  const reqBody = (ctx.request as any).body;
-  await insertUser({
-    id: reqBody.id,
-    name: reqBody.name,
-    avatar: reqBody.avatar,
-    phone: reqBody.phone
-  });
-});
-
-router.put('/user', async (ctx) => {
-  const reqBody = (ctx.request as any).body;
-  await updateUser(reqBody);
-});
 
 app.use(bodyParser());
 
@@ -95,8 +73,8 @@ app.use(async (ctx, next) => {
   }
 });
 
-app.use(router.routes());
-app.use(router.allowedMethods());
+app.use(userRoute.routes());
+app.use(friendRoute.routes());
 
 // 全局错误事件监听
 app.on('error', (error) => {

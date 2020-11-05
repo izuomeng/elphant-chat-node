@@ -39,6 +39,9 @@ class Db {
       ),
       this.db.run(
         'CREATE TABLE if not exists message(id TEXT PRIMARY KEY, text TEXT, type INTEGER, image TEXT, sender TEXT, receiverId TEXT, time INTEGER, haveRead TEXT)'
+      ),
+      this.db.run(
+        'CREATE TABLE if not exists user_friend(id TEXT PRIMARY KEY, from_uid TEXT, to_uid TEXT, agreed TEXT, time INTEGER)'
       )
     ]);
     return this.db;
