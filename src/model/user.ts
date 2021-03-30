@@ -14,3 +14,11 @@ export interface UserFriend {
   agreed: BoolString;
   time: number;
 }
+
+export interface UserFriendSingle {
+  id: string;
+  friend: ChatUser;
+  meApply: BoolString;
+  agreed: BoolString;
+  time: number;
+}
